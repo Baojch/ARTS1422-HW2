@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+<head>
+    <title>包佳诚-数据可视化</title>
+    <!-- d3 -->
+    <script type="text/javascript" src="http://d3js.org/d3.v5.min.js"></script>
+</head>
+<body>
+    <div class="jumbotron">
+        <h1 style="font-family: STKaiti;">数据可视化HW2</h1>
+        <p>包佳诚 2021533098</p>
+    </div>
+
+    <div style="margin-top: 20px;"></div>
+
+    <div id="svgContainer1" ></div>
+    <div id="svgContainer2" ></div>
+    <div id="svgContainer3" ></div>
+
+    <div style="margin-top: 20px;"></div>
+
+    <button onclick="clearAllHighlights()">Clear Highlights</button>
+
+    <style>
+        body {
+            margin: 0 auto;
+            max-width: 1007px;
+          }
+        .jumbotron {
+            text-align: center;
+            background-color: lightgrey;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        #svgContainer1, #svgContainer2, #svgContainer3 {
+            display: inline-block;
+            width: 330px;
+            height: 250px;
+            border: 1px solid black;
+        }
+        .highlighted {
+            stroke: red;
+            stroke-width: 2;
+        }
+        button{
+            display: block;
+            margin: 0 auto;
+            background-color:dodgerblue;
+            color:white;
+            width: 300px;
+            height: 47px;
+            border:0;
+            font-size: 16px;			
+            border-radius: 30px;
+        } 
+    </style>
+    <script>
+        var selectedPoints = []; // Store selected points
+
+        // canvas size
+        var margin = { top: 20, right: 10, bottom: 30, left: 40 };
+        var width = 330 - margin.left - margin.right;
+        var height = 250 - margin.top - margin.bottom;
+        var color = d3.scaleOrdinal(d3.schemeCategory10);
+
+        function drawScatterPlot(container, data, xLabel, yLabel, name) {
+
+            var svg = d3.select(container)
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var xScale = d3.scaleLinear()
+            .domain([d3.min(data, function(d) { return Math.min(d[xLabel], 0); }), 
+                    d3.max(data, function(d) { return d[xLabel]; })])
+            .range([0, width])
+            .nice(); // Allow the scale to automatically expand to the appropriate range
+
+
+            var yScale = d3.scaleLinear()
+            .domain([d3.min(data, function(d) { return d[yLabel]; }),
+                    d3.max(data, function(d) { return d[yLabel]; })])
+            .range([height, 0])
+            .nice();
+
+            // scatter
+            svg.append("g")
+            .selectAll("circle")
+            .data(data)
+            .enter().append("circle")
+            .attr("cx", function(d) { return xScale(d[xLabel]); })
+            .attr("cy", function(d) { return yScale(d[yLabel]); })
+            .attr("r", 3)
+            .attr("fill", function(d) { return color(d.species); })
+            .attr("opacity", 0.6)
+            .on("click", function(d, i) {
+                toggleHighlight(this, i);
+            });
+
+            // x-axis
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(xScale))
+                .append("text")
+                .attr("x", width / 2)
+                .attr("y", 25)
+                .attr("fill", "#000")
+                .attr("text-anchor", "middle")
+                .text(xLabel);
+
+            // y-axis
+            svg.append("g")
+                .call(d3.axisLeft(yScale))
+                .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -margin.left)
+                .attr("x", -height / 2)
+                .attr("dy", "1em")
+                .attr("fill", "#000")
+                .attr("text-anchor", "middle")
+                .text(yLabel);
+
+            // title
+            svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", 0)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("text-decoration", "underline")
+                .text(name);
+            
+        }
+
+        // Function to toggle highlight on click
+        function toggleHighlight(element, index) {
+            var isSelected = selectedPoints.indexOf(index);
+
+            if (isSelected === -1) {
+                selectedPoints.push(index);
+                d3.select(element).classed('highlighted', true);
+                highlightCorrespondingPoints(index);
+            } else {
+                selectedPoints.splice(isSelected, 1);
+                d3.select(element).classed('highlighted', false);
+                clearCorrespondingPoints(index);
+            }
+        }
+
+        // Function to highlight corresponding points in other charts
+        function highlightCorrespondingPoints(index) {
+            d3.selectAll("circle").filter(function(d, i) {
+                return i === index;
+            }).classed('highlighted', true);
+
+            d3.selectAll("circle").filter(function(d, i) {
+                return i === index;
+            }).each(function() {
+                var element = d3.select(this);
+                var containerId = element.node().parentNode.parentNode.id;
+                var otherContainers = ['#svgContainer1', '#svgContainer2', '#svgContainer3'].filter(function(container) {
+                    return container !== '#' + containerId;
+                });
+
+                otherContainers.forEach(function(container) {
+                    d3.select(container).select('svg').selectAll("circle").filter(function(d, i) {
+                        return i === index;
+                    }).classed('highlighted', true);
+                });
+            });
+        }
+
+        // Function to clear highlights from corresponding points in other charts
+        function clearCorrespondingPoints(index) {
+            d3.selectAll("circle").filter(function(d, i) {
+                return i === index;
+            }).classed('highlighted', false);
+
+            d3.selectAll("circle").filter(function(d, i) {
+                return i === index;
+            }).each(function() {
+                var element = d3.select(this);
+                var containerId = element.node().parentNode.parentNode.id;
+                var otherContainers = ['#svgContainer1', '#svgContainer2', '#svgContainer3'].filter(function(container) {
+                    return container !== '#' + containerId;
+                });
+
+                otherContainers.forEach(function(container) {
+                    d3.select(container).select('svg').selectAll("circle").filter(function(d, i) {
+                        return i === index;
+                    }).classed('highlighted', false);
+                });
+            });
+        }
+
+        // Function to clear all highlights from all charts
+        function clearAllHighlights(svg) {
+            d3.selectAll('.highlighted').classed('highlighted', false);
+            selectedPoints = [];
+        }
+
+        d3.csv("../data/iris_pca.csv").then(function(data) {
+            data.forEach(function(d) {
+                d.PC1 = parseFloat(d.PC1);
+                d.PC2 = parseFloat(d.PC2);
+            });
+            drawScatterPlot("#svgContainer1", data, "PC1", "PC2", "PCA");
+        });
+
+        d3.csv("../data/iris_tsne.csv").then(function(data) {
+            data.forEach(function(d) {
+                d.TSNE1 = parseFloat(d.TSNE1);
+                d.TSNE2 = parseFloat(d.TSNE2);
+            });
+            drawScatterPlot("#svgContainer2", data, "TSNE1", "TSNE2", "t-SNE");
+        });
+
+        d3.csv("../data/iris_mds.csv").then(function(data) {
+            data.forEach(function(d) {
+                d.MDS1 = parseFloat(d.MDS1);
+                d.MDS2 = parseFloat(d.MDS2);
+            });
+            drawScatterPlot("#svgContainer3", data, "MDS1", "MDS2", "MDS");
+        });
+
+    </script>
+    
+</body>
+</html>
